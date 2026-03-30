@@ -6,6 +6,9 @@
     - {!AndersenWaveDiff} — Andersen wave-difference (default in {!Svf.get_pag})
     - {!Steensgaard}      — Steensgaard's fast unification-based PTA
     - {!PointsTo}         — Points-to set manipulation
+    - {!ConstraintNode}   — Constraint graph node
+    - {!ConstraintEdge}   — Constraint graph edge
+    - {!ConstraintGraph}  — Constraint graph
 *)
 
 open Types
@@ -33,6 +36,121 @@ module PointsTo = struct
 
   (** [count pts] returns the number of elements in [pts]. *)
   external count     : points_to -> int             = "caml_points_to_count"
+end
+
+(** {1 ConstraintNode — node in the constraint graph} *)
+module ConstraintNode = struct
+  (** [get_id node] returns the ID of the node. *)
+  external get_id         : constraint_node -> node_id = "caml_constraint_node_get_id"
+
+  (** [get_in_edges node] returns all incoming constraint edges. *)
+  external get_in_edges   : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_in_edges"
+
+  (** [get_out_edges node] returns all outgoing constraint edges. *)
+  external get_out_edges  : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_out_edges"
+
+  (** {2 Filtered edge accessors} *)
+
+  (** [get_direct_in_edges node] returns incoming Direct edges. *)
+  external get_direct_in_edges   : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_direct_in_edges"
+
+  (** [get_direct_out_edges node] returns outgoing Direct edges. *)
+  external get_direct_out_edges  : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_direct_out_edges"
+
+  (** [get_copy_in_edges node] returns incoming Copy edges. *)
+  external get_copy_in_edges     : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_copy_in_edges"
+
+  (** [get_copy_out_edges node] returns outgoing Copy edges. *)
+  external get_copy_out_edges    : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_copy_out_edges"
+
+  (** [get_gep_in_edges node] returns incoming Gep edges. *)
+  external get_gep_in_edges      : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_gep_in_edges"
+
+  (** [get_gep_out_edges node] returns outgoing Gep edges. *)
+  external get_gep_out_edges     : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_gep_out_edges"
+
+  (** [get_load_in_edges node] returns incoming Load edges. *)
+  external get_load_in_edges     : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_load_in_edges"
+
+  (** [get_load_out_edges node] returns outgoing Load edges. *)
+  external get_load_out_edges    : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_load_out_edges"
+
+  (** [get_store_in_edges node] returns incoming Store edges. *)
+  external get_store_in_edges    : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_store_in_edges"
+
+  (** [get_store_out_edges node] returns outgoing Store edges. *)
+  external get_store_out_edges   : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_store_out_edges"
+
+  (** [get_addr_in_edges node] returns incoming Addr edges. *)
+  external get_addr_in_edges     : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_addr_in_edges"
+
+  (** [get_addr_out_edges node] returns outgoing Addr edges. *)
+  external get_addr_out_edges    : constraint_node -> constraint_edge list
+                                                       = "caml_constraint_node_get_addr_out_edges"
+end
+
+(** {1 ConstraintEdge — edge in the constraint graph} *)
+module ConstraintEdge = struct
+  (** [get_src_node edge] returns the source constraint node. *)
+  external get_src_node  : constraint_edge -> constraint_node = "caml_constraint_edge_get_src_node"
+
+  (** [get_dst_node edge] returns the destination constraint node. *)
+  external get_dst_node  : constraint_edge -> constraint_node = "caml_constraint_edge_get_dst_node"
+
+  (** [get_src_id edge] returns the ID of the source node. *)
+  external get_src_id    : constraint_edge -> node_id = "caml_constraint_edge_get_src_id"
+
+  (** [get_dst_id edge] returns the ID of the destination node. *)
+  external get_dst_id    : constraint_edge -> node_id = "caml_constraint_edge_get_dst_id"
+
+  (** {2 Kind predicates} *)
+  external is_addr_edge       : constraint_edge -> bool = "caml_constraint_edge_is_addr"
+  external is_copy_edge       : constraint_edge -> bool = "caml_constraint_edge_is_copy"
+  external is_store_edge      : constraint_edge -> bool = "caml_constraint_edge_is_store"
+  external is_load_edge       : constraint_edge -> bool = "caml_constraint_edge_is_load"
+  external is_gep_edge        : constraint_edge -> bool = "caml_constraint_edge_is_gep"
+  external is_normal_gep_edge : constraint_edge -> bool = "caml_constraint_edge_is_normal_gep"
+  external is_variant_gep_edge : constraint_edge -> bool = "caml_constraint_edge_is_variant_gep"
+
+  (** {2 Downcast helpers} *)
+  external as_addr_edge       : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_addr"
+  external as_copy_edge       : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_copy"
+  external as_store_edge      : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_store"
+  external as_load_edge       : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_load"
+  external as_normal_gep_edge : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_normal_gep"
+  external as_variant_gep_edge : constraint_edge -> constraint_edge option = "caml_constraint_edge_as_variant_gep"
+end
+
+(** {1 ConstraintGraph — the Andersen constraint graph} *)
+module ConstraintGraph = struct
+  (** [get_nodes cg] returns all constraint nodes. *)
+  external get_nodes   : constraint_graph -> constraint_node list = "caml_constraint_graph_get_nodes"
+
+  (** [get_gnode cg id] returns the constraint node with the given [id].
+      Raises [Failure] if not found. *)
+  external get_gnode   : constraint_graph -> node_id -> constraint_node
+                                                                  = "caml_constraint_graph_get_gnode"
+
+  (** [dump cg filename] dumps the constraint graph to a dot file. *)
+  external dump        : constraint_graph -> string -> unit       = "caml_constraint_graph_dump"
+
+  (** [add_copy_edge cg src dst] adds a copy edge from [src] to [dst].
+      Returns [true] if the edge was newly added. *)
+  external add_copy_edge : constraint_graph -> node_id -> node_id -> bool
+                                                                  = "caml_constraint_graph_add_copy_edge"
 end
 
 (** {1 AndersenBase — base Andersen pointer analysis} *)
@@ -78,6 +196,28 @@ module AndersenBase = struct
   external push_worklist       : andersen_base -> node_id -> unit
                                                         = "caml_andersen_base_push_worklist"
   external pop_worklist        : andersen_base -> node_id = "caml_andersen_base_pop_worklist"
+
+  (** [initialize pa] runs the initialization phase of the analysis. *)
+  external initialize          : andersen_base -> unit  = "caml_andersen_base_initialize"
+
+  (** [finalize pa] runs the finalization phase. *)
+  external finalize            : andersen_base -> unit  = "caml_andersen_base_finalize"
+
+  (** [init_worklist pa] initializes the constraint solving worklist. *)
+  external init_worklist       : andersen_base -> unit  = "caml_andersen_base_init_worklist"
+
+  (** [update_call_graph pa] processes indirect call edges discovered during
+      solving and updates the call graph. Returns [true] if the call graph changed. *)
+  external update_call_graph   : andersen_base -> bool
+                                                        = "caml_andersen_base_update_call_graph"
+
+  (** [is_in_cycle pa id] returns [true] if node [id] is in a PTA SCC cycle. *)
+  external is_in_cycle         : andersen_base -> node_id -> bool
+                                                        = "caml_andersen_base_is_in_cycle"
+
+  (** [scc_rep_node pa id] returns the SCC representative node for [id]. *)
+  external scc_rep_node        : andersen_base -> node_id -> node_id
+                                                        = "caml_andersen_base_scc_rep_node"
 end
 
 (** {1 AndersenWaveDiff — wave-propagation Andersen PTA} *)

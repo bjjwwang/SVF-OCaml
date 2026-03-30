@@ -51,16 +51,23 @@ namespace SVF {
   class CallGraphEdge;
   class SVFG;
   class VFG;
+  class VFGNode;
+  class VFGEdge;
   class AndersenBase;
   class AndersenWaveDiff;
   class Steensgaard;
   class PointsTo;
   class ConstraintGraph;
+  class ConstraintNode;
+  class ConstraintEdge;
   class MTA;
   class MHP;
   class LockAnalysis;
   class TCT;
   class AbstractState;
+  class AbstractValue;
+  class AddressValue;
+  class BoundedInt;
   class FunObjVar;
   class FunValVar;
   class BaseObjVar;
@@ -94,10 +101,14 @@ DECL_SVF_WRAP(call_graph,     SVF::CallGraph);
 DECL_SVF_WRAP(call_graph_node,SVF::CallGraphNode);
 DECL_SVF_WRAP(call_graph_edge,SVF::CallGraphEdge);
 DECL_SVF_WRAP(svfg,           SVF::SVFG);
+DECL_SVF_WRAP(vfg_node,       SVF::VFGNode);
+DECL_SVF_WRAP(vfg_edge,       SVF::VFGEdge);
 DECL_SVF_WRAP(andersen_base,  SVF::AndersenBase);
 DECL_SVF_WRAP(andersen_wave_diff, SVF::AndersenWaveDiff);
 DECL_SVF_WRAP(steensgaard,    SVF::Steensgaard);
 DECL_SVF_WRAP(constraint_graph, SVF::ConstraintGraph);
+DECL_SVF_WRAP(constraint_node,  SVF::ConstraintNode);
+DECL_SVF_WRAP(constraint_edge,  SVF::ConstraintEdge);
 DECL_SVF_WRAP(abstract_state, SVF::AbstractState);
 DECL_SVF_WRAP(fun_obj_var,    SVF::FunObjVar);
 
@@ -114,3 +125,15 @@ DECL_SVF_WRAP(tct,           SVF::TCT);
 /* IntervalValue (owned by OCaml) */
 value              wrap_interval_value(SVF::IntervalValue* ptr);
 SVF::IntervalValue* unwrap_interval_value(value v);
+
+/* AbstractValue (owned by OCaml) */
+value              wrap_abstract_value(SVF::AbstractValue* ptr);
+SVF::AbstractValue* unwrap_abstract_value(value v);
+
+/* AddressValue (owned by OCaml) */
+value              wrap_address_value(SVF::AddressValue* ptr);
+SVF::AddressValue* unwrap_address_value(value v);
+
+/* BoundedInt (owned by OCaml) */
+value              wrap_bounded_int(SVF::BoundedInt* ptr);
+SVF::BoundedInt*   unwrap_bounded_int(value v);

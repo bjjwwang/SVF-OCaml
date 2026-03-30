@@ -25,6 +25,8 @@ extern "C" {
 #include "Graphs/ICFG.h"
 #include "Graphs/CallGraph.h"
 #include "Graphs/ConsG.h"
+#include "Graphs/VFGNode.h"
+#include "Graphs/VFGEdge.h"
 #include "SVFIR/SVFType.h"
 #include "SVFIR/SVFStatements.h"
 #include "SVFIR/SVFVariables.h"
@@ -37,6 +39,7 @@ extern "C" {
 #include "MTA/TCT.h"
 #include "AE/Core/AbstractState.h"
 #include "AE/Core/IntervalValue.h"
+#include "AE/Core/AddressValue.h"
 
 using namespace SVF;
 
@@ -96,12 +99,17 @@ IMPL_SVF_TYPE(call_graph,      CallGraph)
 IMPL_SVF_TYPE(call_graph_node, CallGraphNode)
 IMPL_SVF_TYPE(call_graph_edge, CallGraphEdge)
 IMPL_SVF_TYPE(svfg,            SVFG)
+IMPL_SVF_TYPE(vfg_node,        VFGNode)
+IMPL_SVF_TYPE(vfg_edge,        VFGEdge)
 IMPL_SVF_TYPE(andersen_base,   AndersenBase)
 IMPL_SVF_TYPE(andersen_wave_diff, AndersenWaveDiff)
 IMPL_SVF_TYPE(steensgaard,     Steensgaard)
 IMPL_SVF_TYPE(constraint_graph, ConstraintGraph)
+IMPL_SVF_TYPE(constraint_node,  ConstraintNode)
+IMPL_SVF_TYPE(constraint_edge,  ConstraintEdge)
 IMPL_SVF_TYPE(abstract_state,  AbstractState)
 IMPL_SVF_TYPE(fun_obj_var,     FunObjVar)
+
 /* MTA-related types are user-owned — finalizer deletes the C++ object */
 #define IMPL_SVF_OWNED_TYPE(name, CppType)                                   \
   static void name##_finalize(value v) {                                     \
@@ -189,4 +197,79 @@ value wrap_interval_value(IntervalValue* ptr) {
 }
 IntervalValue* unwrap_interval_value(value v) {
     return *((IntervalValue**)Data_custom_val(v));
+}
+
+/* =========================================================================
+ * AbstractValue — user-owned
+ * ========================================================================= */
+static void abstract_value_finalize(value v) {
+    AbstractValue** pp = (AbstractValue**)Data_custom_val(v);
+    delete *pp;
+    *pp = nullptr;
+}
+struct custom_operations abstract_value_ops = {
+    "svf_ocaml.abstract_value",
+    abstract_value_finalize,
+    custom_compare_default, custom_hash_default,
+    custom_serialize_default, custom_deserialize_default,
+    custom_compare_ext_default, custom_fixed_length_default
+};
+value wrap_abstract_value(AbstractValue* ptr) {
+    CAMLparam0(); CAMLlocal1(v);
+    v = caml_alloc_custom(&abstract_value_ops, sizeof(AbstractValue*), 0, 1);
+    *((AbstractValue**)Data_custom_val(v)) = ptr;
+    CAMLreturn(v);
+}
+AbstractValue* unwrap_abstract_value(value v) {
+    return *((AbstractValue**)Data_custom_val(v));
+}
+
+/* =========================================================================
+ * AddressValue — user-owned
+ * ========================================================================= */
+static void address_value_finalize(value v) {
+    AddressValue** pp = (AddressValue**)Data_custom_val(v);
+    delete *pp;
+    *pp = nullptr;
+}
+struct custom_operations address_value_ops = {
+    "svf_ocaml.address_value",
+    address_value_finalize,
+    custom_compare_default, custom_hash_default,
+    custom_serialize_default, custom_deserialize_default,
+    custom_compare_ext_default, custom_fixed_length_default
+};
+value wrap_address_value(AddressValue* ptr) {
+    CAMLparam0(); CAMLlocal1(v);
+    v = caml_alloc_custom(&address_value_ops, sizeof(AddressValue*), 0, 1);
+    *((AddressValue**)Data_custom_val(v)) = ptr;
+    CAMLreturn(v);
+}
+AddressValue* unwrap_address_value(value v) {
+    return *((AddressValue**)Data_custom_val(v));
+}
+
+/* =========================================================================
+ * BoundedInt — user-owned
+ * ========================================================================= */
+static void bounded_int_finalize(value v) {
+    BoundedInt** pp = (BoundedInt**)Data_custom_val(v);
+    delete *pp;
+    *pp = nullptr;
+}
+struct custom_operations bounded_int_ops = {
+    "svf_ocaml.bounded_int",
+    bounded_int_finalize,
+    custom_compare_default, custom_hash_default,
+    custom_serialize_default, custom_deserialize_default,
+    custom_compare_ext_default, custom_fixed_length_default
+};
+value wrap_bounded_int(BoundedInt* ptr) {
+    CAMLparam0(); CAMLlocal1(v);
+    v = caml_alloc_custom(&bounded_int_ops, sizeof(BoundedInt*), 0, 1);
+    *((BoundedInt**)Data_custom_val(v)) = ptr;
+    CAMLreturn(v);
+}
+BoundedInt* unwrap_bounded_int(value v) {
+    return *((BoundedInt**)Data_custom_val(v));
 }

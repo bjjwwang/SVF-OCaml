@@ -35,6 +35,9 @@ type call_graph_node
 (** Call graph edge *)
 type call_graph_edge
 
+(** Call graph SCC (SCCDetection over CallGraph) *)
+type call_graph_scc
+
 (** SVFG — Sparse Value Flow Graph *)
 type svfg
 
@@ -47,7 +50,7 @@ type vfg_node
 (** SVFG node *)
 type svfg_node
 
-(** VFG edge / SVFG edge (both use ICFGEdge base) *)
+(** VFG edge / SVFG edge *)
 type vfg_edge
 
 (** Andersen-family pointer analysis (base) *)
@@ -65,6 +68,12 @@ type points_to
 (** Constraint graph (used by Andersen analysis) *)
 type constraint_graph
 
+(** Constraint graph node *)
+type constraint_node
+
+(** Constraint graph edge *)
+type constraint_edge
+
 (** MTA — Multi-Thread Analysis *)
 type mta
 
@@ -80,11 +89,17 @@ type tct
 (** Abstract state (for abstract interpretation) *)
 type abstract_state
 
-(** Abstract value (for abstract interpretation) *)
+(** Abstract value (for abstract interpretation) — owned, heap-allocated *)
 type abstract_value
 
-(** Interval value (for abstract interpretation) *)
+(** Interval value (for abstract interpretation) — owned, heap-allocated *)
 type interval_value
+
+(** Address value (for abstract interpretation) — owned, heap-allocated *)
+type address_value
+
+(** Bounded integer — owned, heap-allocated *)
+type bounded_int
 
 (** Function object variable *)
 type fun_obj_var
