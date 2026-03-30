@@ -251,6 +251,9 @@ module SvfVar = struct
   (** [get_out_edges var] returns the list of outgoing SVF statements. *)
   external get_out_edges  : svf_var -> svf_stmt list = "caml_svf_var_get_out_edges"
 
+  (** [get_icfg_node var] returns the ICFG node where [var] is defined. *)
+  external get_icfg_node  : svf_var -> icfg_node = "caml_svf_var_get_icfg_node"
+
   (** {2 GepValVar-specific} *)
 
   external gep_val_get_constant_field_idx : svf_var -> int       = "caml_gep_val_var_get_constant_field_idx"
@@ -311,6 +314,7 @@ end
 (** {1 FunObjVar — function object variable with rich API} *)
 module FunObjVar = struct
   (** [get_name f] returns the function name. *)
+  external get_id            : fun_obj_var -> node_id      = "caml_fun_obj_var_get_id"
   external get_name          : fun_obj_var -> string       = "caml_fun_obj_var_get_name"
 
   (** [to_string f] returns a verbose string representation. *)

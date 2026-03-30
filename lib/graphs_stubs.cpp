@@ -77,16 +77,22 @@ extern "C" CAMLprim value caml_icfg_get_node_num(value v_icfg) {
 
 extern "C" CAMLprim value caml_icfg_get_global_icfg_node(value v_icfg) {
     CAMLparam1(v_icfg);
+    CAMLlocal1(result);
     GlobalICFGNode* g = unwrap_icfg(v_icfg)->getGlobalICFGNode();
-    if (!g) caml_failwith("icfg_get_global_icfg_node: null");
-    CAMLreturn(wrap_icfg_node(static_cast<ICFGNode*>(g)));
+    if (!g) CAMLreturn(Val_int(0));  /* None */
+    result = caml_alloc(1, 0);
+    Store_field(result, 0, wrap_icfg_node(static_cast<ICFGNode*>(g)));
+    CAMLreturn(result);  /* Some(g) */
 }
 
 extern "C" CAMLprim value caml_icfg_get_fun_entry_icfg_node(value v_icfg, value v_fun) {
     CAMLparam2(v_icfg, v_fun);
+    CAMLlocal1(result);
     FunEntryICFGNode* e = unwrap_icfg(v_icfg)->getFunEntryICFGNode(unwrap_fun_obj_var(v_fun));
-    if (!e) caml_failwith("icfg_get_fun_entry_icfg_node: null");
-    CAMLreturn(wrap_icfg_node(static_cast<ICFGNode*>(e)));
+    if (!e) CAMLreturn(Val_int(0));  /* None */
+    result = caml_alloc(1, 0);
+    Store_field(result, 0, wrap_icfg_node(static_cast<ICFGNode*>(e)));
+    CAMLreturn(result);  /* Some(e) */
 }
 
 extern "C" CAMLprim value caml_icfg_dump(value v_icfg, value v_file) {
@@ -268,10 +274,9 @@ extern "C" CAMLprim value caml_call_icfg_node_get_actual_parms(value v_node) {
 extern "C" CAMLprim value caml_call_icfg_node_get_argument(value v_node, value v_idx) {
     CAMLparam2(v_node, v_idx);
     CallICFGNode* c = SVFUtil::dyn_cast<CallICFGNode>(unwrap_icfg_node(v_node));
-    if (!c) caml_failwith("not a CallICFGNode");
+    if (!c) CAMLreturn(Val_int(0));
     const SVFVar* arg = c->getArgument((u32_t)Int_val(v_idx));
-    if (!arg) caml_failwith("call_icfg_node_get_argument: null");
-    CAMLreturn(wrap_svf_var(const_cast<SVFVar*>(arg)));
+    CAMLreturn(wrap_svf_var_opt(const_cast<SVFVar*>(arg)));
 }
 
 extern "C" CAMLprim value caml_call_icfg_node_is_var_arg(value v_node) {
@@ -312,10 +317,9 @@ extern "C" CAMLprim value caml_call_icfg_node_get_caller_entry(value v_node) {
 extern "C" CAMLprim value caml_ret_icfg_node_get_actual_ret(value v_node) {
     CAMLparam1(v_node);
     RetICFGNode* r = SVFUtil::dyn_cast<RetICFGNode>(unwrap_icfg_node(v_node));
-    if (!r) caml_failwith("not a RetICFGNode");
+    if (!r) CAMLreturn(Val_int(0));
     const SVFVar* ar = r->getActualRet();
-    if (!ar) caml_failwith("ret_icfg_node_get_actual_ret: null");
-    CAMLreturn(wrap_svf_var(const_cast<SVFVar*>(ar)));
+    CAMLreturn(wrap_svf_var_opt(const_cast<SVFVar*>(ar)));
 }
 
 extern "C" CAMLprim value caml_ret_icfg_node_get_call_icfg_node(value v_node) {
@@ -407,6 +411,13 @@ extern "C" CAMLprim value caml_intra_cfg_edge_get_condition(value v_e) {
     if (!ie) CAMLreturn(Val_int(0));
     const SVFVar* cond = ie->getCondition();
     CAMLreturn(wrap_svf_var_opt(const_cast<SVFVar*>(cond)));
+}
+
+extern "C" CAMLprim value caml_intra_cfg_edge_get_successor_cond_value(value v_e) {
+    CAMLparam1(v_e);
+    IntraCFGEdge* ie = SVFUtil::dyn_cast<IntraCFGEdge>(unwrap_icfg_edge(v_e));
+    if (!ie) caml_failwith("intra_cfg_edge_get_successor_cond_value: not an IntraCFGEdge");
+    CAMLreturn(Val_int((int)ie->getSuccessorCondValue()));
 }
 
 /* CallCFGEdge */
@@ -536,6 +547,13 @@ extern "C" CAMLprim value caml_call_graph_node_get_id(value v_n) {
 extern "C" CAMLprim value caml_call_graph_node_get_name(value v_n) {
     CAMLparam1(v_n);
     CAMLreturn(caml_copy_string(unwrap_call_graph_node(v_n)->getName().c_str()));
+}
+
+extern "C" CAMLprim value caml_call_graph_node_get_function(value v_n) {
+    CAMLparam1(v_n);
+    const FunObjVar* fun = unwrap_call_graph_node(v_n)->getFunction();
+    if (!fun) caml_failwith("call_graph_node_get_function: null");
+    CAMLreturn(wrap_fun_obj_var(const_cast<FunObjVar*>(fun)));
 }
 
 extern "C" CAMLprim value caml_call_graph_node_get_out_edges(value v_n) {

@@ -829,6 +829,10 @@ extern "C" CAMLprim value caml_const_fp_obj_var_get_fp_value(value v_var) {
 }
 
 /* FunObjVar */
+extern "C" CAMLprim value caml_fun_obj_var_get_id(value v_f) {
+    CAMLparam1(v_f);
+    CAMLreturn(Val_int((int)unwrap_fun_obj_var(v_f)->getId()));
+}
 extern "C" CAMLprim value caml_fun_obj_var_get_name(value v_f) {
     CAMLparam1(v_f);
     CAMLreturn(caml_copy_string(unwrap_fun_obj_var(v_f)->getName().c_str()));
@@ -862,8 +866,7 @@ extern "C" CAMLprim value caml_fun_obj_var_get_arg(value v_f, value v_idx) {
     CAMLparam2(v_f, v_idx);
     FunObjVar* f = unwrap_fun_obj_var(v_f);
     const ArgValVar* arg = f->getArg((u32_t)Int_val(v_idx));
-    if (!arg) caml_failwith("fun_obj_var_get_arg: null");
-    CAMLreturn(wrap_svf_var(const_cast<SVFVar*>(static_cast<const SVFVar*>(arg))));
+    CAMLreturn(wrap_svf_var_opt(const_cast<SVFVar*>(static_cast<const SVFVar*>(arg))));
 }
 extern "C" CAMLprim value caml_fun_obj_var_get_function_type(value v_f) {
     CAMLparam1(v_f);
@@ -1089,4 +1092,18 @@ extern "C" CAMLprim value caml_svfir_get_num_of_flatten_elements(value v_pag, va
     SVFType* t = unwrap_svf_type(v_type);
     u32_t result = pag->getNumOfFlattenElements(t);
     CAMLreturn(Val_int((int)result));
+}
+
+/* SVFVar::getICFGNode() — returns the ICFG node where the variable is defined.
+   Works for ValVar and BaseObjVar subtypes. */
+extern "C" CAMLprim value caml_svf_var_get_icfg_node(value v_var) {
+    CAMLparam1(v_var);
+    SVFVar* var = unwrap_svf_var(v_var);
+    const ICFGNode* node = nullptr;
+    if (const ValVar* vv = SVFUtil::dyn_cast<ValVar>(var))
+        node = vv->getICFGNode();
+    else if (const BaseObjVar* bv = SVFUtil::dyn_cast<BaseObjVar>(var))
+        node = bv->getICFGNode();
+    if (!node) caml_failwith("caml_svf_var_get_icfg_node: null ICFGNode");
+    CAMLreturn(wrap_icfg_node(const_cast<ICFGNode*>(node)));
 }

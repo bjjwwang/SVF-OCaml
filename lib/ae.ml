@@ -263,12 +263,12 @@ module AbstractState = struct
   external in_addr_to_addrs_table : abstract_state -> int -> bool
                                                            = "caml_abstract_state_in_addr_to_addrs_table"
 
-  (** [load_value as_ id] returns the interval value for variable [id]. *)
-  external load_value         : abstract_state -> node_id -> interval_value
+  (** [load_value as_ id] loads the abstract value for addresses at variable [id]. *)
+  external load_value         : abstract_state -> node_id -> abstract_value
                                                            = "caml_abstract_state_load_value"
 
-  (** [store_value as_ id iv] stores interval value [iv] for variable [id]. *)
-  external store_value        : abstract_state -> node_id -> interval_value -> unit
+  (** [store_value as_ id av] stores abstract value [av] to addresses at variable [id]. *)
+  external store_value        : abstract_state -> node_id -> abstract_value -> unit
                                                            = "caml_abstract_state_store_value"
 
   (** [hash as_] returns a hash of the state. *)
@@ -329,4 +329,34 @@ module AbstractState = struct
   (** [init_obj_var as_ var] initialises the object variable [var] in the state. *)
   external init_obj_var       : abstract_state -> svf_var -> unit
                                                            = "caml_abstract_state_init_obj_var"
+
+  (** [get_or_default as_ id] returns the abstract value for [id],
+      creating a default bottom value if absent. *)
+  external get_or_default     : abstract_state -> node_id -> abstract_value
+                                                           = "caml_abstract_state_get_var"
+
+  (** [create ()] creates a fresh, empty abstract state (heap-allocated, GC-managed). *)
+  external create             : unit -> abstract_state     = "caml_abstract_state_create"
+
+  (** [clone as_] returns a deep copy of [as_] (GC-managed). *)
+  external clone              : abstract_state -> abstract_state
+                                                           = "caml_abstract_state_clone"
+
+  (** [widening a b] returns a new abstract state that is the widening of [a] with [b]. *)
+  external widening           : abstract_state -> abstract_state -> abstract_state
+                                                           = "caml_abstract_state_widening"
+
+  (** [narrowing a b] returns a new abstract state that is the narrowing of [a] with [b]. *)
+  external narrowing          : abstract_state -> abstract_state -> abstract_state
+                                                           = "caml_abstract_state_narrowing"
+
+  (** [is_cmp_branch_feasible svfir cmp_stmt succ_val as_] checks branch feasibility
+      and updates [as_] with the refined state. *)
+  external is_cmp_branch_feasible    : svfir -> svf_stmt -> int -> abstract_state -> bool
+                                                           = "caml_abstract_state_is_cmp_branch_feasible"
+
+  (** [is_switch_branch_feasible svfir cond_var succ_val as_] checks switch feasibility
+      and updates [as_] with the refined state. *)
+  external is_switch_branch_feasible : svfir -> svf_var -> int -> abstract_state -> bool
+                                                           = "caml_abstract_state_is_switch_branch_feasible"
 end

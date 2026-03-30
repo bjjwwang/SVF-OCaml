@@ -159,10 +159,15 @@ module IcfgEdge = struct
 
   (** {2 IntraCFGEdge-specific} *)
 
-  (** [intra_cfg_edge_get_condition edge] returns the branch condition as a
-      string, or [None] for unconditional edges. *)
-  external intra_cfg_edge_get_condition : icfg_edge -> string option
+  (** [intra_cfg_edge_get_condition edge] returns the branch condition variable,
+      or [None] for unconditional edges. *)
+  external intra_cfg_edge_get_condition : icfg_edge -> svf_var option
                                                     = "caml_intra_cfg_edge_get_condition"
+
+  (** [intra_cfg_edge_get_successor_cond_value edge] returns the successor
+      condition value (branch taken = 1, not taken = 0, or switch case value). *)
+  external intra_cfg_edge_get_successor_cond_value : icfg_edge -> int
+                                                    = "caml_intra_cfg_edge_get_successor_cond_value"
 
   (** {2 CallCFGEdge-specific} *)
 
@@ -214,6 +219,7 @@ module CallGraphNode = struct
   external to_string     : call_graph_node -> string       = "caml_call_graph_node_to_string"
   external get_id        : call_graph_node -> node_id      = "caml_call_graph_node_get_id"
   external get_name      : call_graph_node -> string       = "caml_call_graph_node_get_name"
+  external get_function  : call_graph_node -> fun_obj_var  = "caml_call_graph_node_get_function"
   external get_out_edges : call_graph_node -> call_graph_edge list
                                                            = "caml_call_graph_node_get_out_edges"
   external get_in_edges  : call_graph_node -> call_graph_edge list

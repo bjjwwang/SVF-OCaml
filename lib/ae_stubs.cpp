@@ -12,6 +12,7 @@
 #include "AE/Core/AddressValue.h"
 #include "SVFIR/SVFStatements.h"
 #include "SVFIR/SVFVariables.h"
+#include "SVFIR/SVFIR.h"
 #include "Util/SVFUtil.h"
 
 #include <sstream>
@@ -583,7 +584,12 @@ extern "C" CAMLprim value caml_abstract_state_get_byte_offset(value v_as, value 
     AbstractState* as = unwrap_abstract_state(v_as);
     GepStmt* gep = SVFUtil::dyn_cast<GepStmt>(unwrap_svf_stmt(v_gep));
     if (!gep) caml_failwith("abstract_state_get_byte_offset: not a GepStmt");
-    IntervalValue result = as->getByteOffset(gep);
+    IntervalValue result;
+    try {
+        result = as->getByteOffset(gep);
+    } catch (...) {
+        result = IntervalValue::top();
+    }
     CAMLreturn(wrap_interval_value(new IntervalValue(result)));
 }
 
@@ -611,4 +617,277 @@ extern "C" CAMLprim value caml_abstract_state_init_obj_var(value v_as, value v_o
     if (!obj) caml_failwith("abstract_state_init_obj_var: not an ObjVar");
     as->initObjVar(obj);
     CAMLreturn(Val_unit);
+}
+
+/* =========================================================================
+ * AbstractState — create / clone / widening / narrowing
+ * We use a separate custom_ops with a real finalizer so the GC frees
+ * heap-allocated AbstractState objects.
+ * ========================================================================= */
+
+static void abstract_state_owned_finalize(value v) {
+    AbstractState** pp = (AbstractState**)Data_custom_val(v);
+    delete *pp;
+    *pp = nullptr;
+}
+static struct custom_operations abstract_state_owned_ops = {
+    "svf_ocaml.abstract_state_owned",
+    abstract_state_owned_finalize,
+    custom_compare_default, custom_hash_default,
+    custom_serialize_default, custom_deserialize_default,
+    custom_compare_ext_default, custom_fixed_length_default
+};
+static value wrap_owned_abstract_state(AbstractState* ptr) {
+    if (!ptr) caml_failwith("svf_ocaml: null owned_abstract_state");
+    CAMLparam0(); CAMLlocal1(v);
+    v = caml_alloc_custom(&abstract_state_owned_ops, sizeof(AbstractState*), 0, 1);
+    *((AbstractState**)Data_custom_val(v)) = ptr;
+    CAMLreturn(v);
+}
+
+extern "C" CAMLprim value caml_abstract_state_create(value v_unit) {
+    CAMLparam1(v_unit);
+    AbstractState* as = new AbstractState();
+    CAMLreturn(wrap_owned_abstract_state(as));
+}
+
+extern "C" CAMLprim value caml_abstract_state_clone(value v_as) {
+    CAMLparam1(v_as);
+    AbstractState* as = unwrap_abstract_state(v_as);
+    AbstractState* copy = new AbstractState(*as);
+    CAMLreturn(wrap_owned_abstract_state(copy));
+}
+
+extern "C" CAMLprim value caml_abstract_state_widening(value v_a, value v_b) {
+    CAMLparam2(v_a, v_b);
+    AbstractState* a = unwrap_abstract_state(v_a);
+    AbstractState* b = unwrap_abstract_state(v_b);
+    AbstractState* result = new AbstractState(a->widening(*b));
+    CAMLreturn(wrap_owned_abstract_state(result));
+}
+
+extern "C" CAMLprim value caml_abstract_state_narrowing(value v_a, value v_b) {
+    CAMLparam2(v_a, v_b);
+    AbstractState* a = unwrap_abstract_state(v_a);
+    AbstractState* b = unwrap_abstract_state(v_b);
+    AbstractState* result = new AbstractState(a->narrowing(*b));
+    CAMLreturn(wrap_owned_abstract_state(result));
+}
+
+/* =========================================================================
+ * Branch feasibility — standalone implementations (from pybind/AE.cpp)
+ * isCmpBranchFeasible and isSwitchBranchFeasible are private in
+ * AbstractInterpretation, so we replicate the logic here using only
+ * the public AbstractState API.
+ * ========================================================================= */
+
+#include "Util/WorkList.h"
+
+static const SVF::Map<s32_t, s32_t>& reverse_predicate_map() {
+    static SVF::Map<s32_t, s32_t> m = {
+        {CmpStmt::Predicate::FCMP_OEQ, CmpStmt::Predicate::FCMP_ONE},
+        {CmpStmt::Predicate::FCMP_UEQ, CmpStmt::Predicate::FCMP_UNE},
+        {CmpStmt::Predicate::FCMP_OGT, CmpStmt::Predicate::FCMP_OLE},
+        {CmpStmt::Predicate::FCMP_OGE, CmpStmt::Predicate::FCMP_OLT},
+        {CmpStmt::Predicate::FCMP_OLT, CmpStmt::Predicate::FCMP_OGE},
+        {CmpStmt::Predicate::FCMP_OLE, CmpStmt::Predicate::FCMP_OGT},
+        {CmpStmt::Predicate::FCMP_ONE, CmpStmt::Predicate::FCMP_OEQ},
+        {CmpStmt::Predicate::FCMP_UNE, CmpStmt::Predicate::FCMP_UEQ},
+        {CmpStmt::Predicate::ICMP_EQ,  CmpStmt::Predicate::ICMP_NE},
+        {CmpStmt::Predicate::ICMP_NE,  CmpStmt::Predicate::ICMP_EQ},
+        {CmpStmt::Predicate::ICMP_UGT, CmpStmt::Predicate::ICMP_ULE},
+        {CmpStmt::Predicate::ICMP_ULT, CmpStmt::Predicate::ICMP_UGE},
+        {CmpStmt::Predicate::ICMP_UGE, CmpStmt::Predicate::ICMP_ULT},
+        {CmpStmt::Predicate::ICMP_SGT, CmpStmt::Predicate::ICMP_SLE},
+        {CmpStmt::Predicate::ICMP_SLT, CmpStmt::Predicate::ICMP_SGE},
+        {CmpStmt::Predicate::ICMP_SGE, CmpStmt::Predicate::ICMP_SLT},
+    };
+    return m;
+}
+
+static const SVF::Map<s32_t, s32_t>& switch_lhsrhs_predicate_map() {
+    static SVF::Map<s32_t, s32_t> m = {
+        {CmpStmt::Predicate::FCMP_OEQ, CmpStmt::Predicate::FCMP_OEQ},
+        {CmpStmt::Predicate::FCMP_UEQ, CmpStmt::Predicate::FCMP_UEQ},
+        {CmpStmt::Predicate::FCMP_OGT, CmpStmt::Predicate::FCMP_OLT},
+        {CmpStmt::Predicate::FCMP_OGE, CmpStmt::Predicate::FCMP_OLE},
+        {CmpStmt::Predicate::FCMP_OLT, CmpStmt::Predicate::FCMP_OGT},
+        {CmpStmt::Predicate::FCMP_OLE, CmpStmt::Predicate::FCMP_OGE},
+        {CmpStmt::Predicate::FCMP_ONE, CmpStmt::Predicate::FCMP_ONE},
+        {CmpStmt::Predicate::FCMP_UNE, CmpStmt::Predicate::FCMP_UNE},
+        {CmpStmt::Predicate::ICMP_EQ,  CmpStmt::Predicate::ICMP_EQ},
+        {CmpStmt::Predicate::ICMP_NE,  CmpStmt::Predicate::ICMP_NE},
+        {CmpStmt::Predicate::ICMP_UGT, CmpStmt::Predicate::ICMP_ULT},
+        {CmpStmt::Predicate::ICMP_ULT, CmpStmt::Predicate::ICMP_UGT},
+        {CmpStmt::Predicate::ICMP_UGE, CmpStmt::Predicate::ICMP_ULE},
+        {CmpStmt::Predicate::ICMP_SGT, CmpStmt::Predicate::ICMP_SLT},
+        {CmpStmt::Predicate::ICMP_SLT, CmpStmt::Predicate::ICMP_SGT},
+        {CmpStmt::Predicate::ICMP_SGE, CmpStmt::Predicate::ICMP_SLE},
+    };
+    return m;
+}
+
+static bool svf_is_cmp_branch_feasible(SVFIR* svfir, const CmpStmt* cmpStmt,
+                                        s64_t succ, AbstractState& as)
+{
+    AbstractState new_es = as;
+    NodeID op0 = cmpStmt->getOpVarID(0);
+    NodeID op1 = cmpStmt->getOpVarID(1);
+    NodeID res_id = cmpStmt->getResID();
+    s32_t predicate = cmpStmt->getPredicate();
+
+    if (new_es.inVarToAddrsTable(op0) || new_es.inVarToAddrsTable(op1)) {
+        as = new_es;
+        return true;
+    }
+
+    auto getLoadOp = [&](NodeID id) -> const LoadStmt* {
+        SVFVar* opVar = svfir->getGNode(id);
+        if (!opVar->getInEdges().empty()) {
+            SVFStmt* stmt = *opVar->getInEdges().begin();
+            if (const LoadStmt* ls = SVFUtil::dyn_cast<LoadStmt>(stmt))
+                return ls;
+            if (const CopyStmt* cs = SVFUtil::dyn_cast<CopyStmt>(stmt)) {
+                SVFVar* rhsVar = svfir->getGNode(cs->getRHSVarID());
+                if (!rhsVar->getInEdges().empty()) {
+                    SVFStmt* stmt2 = *rhsVar->getInEdges().begin();
+                    if (const LoadStmt* ls2 = SVFUtil::dyn_cast<LoadStmt>(stmt2))
+                        return ls2;
+                }
+            }
+        }
+        return nullptr;
+    };
+
+    const LoadStmt* load_op0 = getLoadOp(op0);
+    const LoadStmt* load_op1 = getLoadOp(op1);
+
+    IntervalValue resVal = new_es[res_id].getInterval();
+    resVal.meet_with(IntervalValue((s64_t)succ, succ));
+    if (resVal.isBottom())
+        return false;
+
+    bool b0 = new_es[op0].getInterval().is_numeral();
+    bool b1 = new_es[op1].getInterval().is_numeral();
+
+    if (b0 && !b1) {
+        std::swap(op0, op1);
+        std::swap(load_op0, load_op1);
+        auto it = switch_lhsrhs_predicate_map().find(predicate);
+        if (it != switch_lhsrhs_predicate_map().end())
+            predicate = it->second;
+    } else {
+        if (!b0 && !b1) { as = new_es; return true; }
+        if (b0 && b1)   { as = new_es; return true; }
+    }
+
+    if (succ == 0) {
+        auto it = reverse_predicate_map().find(predicate);
+        if (it != reverse_predicate_map().end())
+            predicate = it->second;
+    }
+
+    AddressValue addrs;
+    if (load_op0 && new_es.inVarToAddrsTable(load_op0->getRHSVarID()))
+        addrs = new_es[load_op0->getRHSVarID()].getAddrs();
+
+    IntervalValue& lhs = new_es[op0].getInterval();
+    IntervalValue& rhs = new_es[op1].getInterval();
+
+    auto apply_predicate = [&](IntervalValue& target, const IntervalValue& bound) {
+        switch (predicate) {
+        case CmpStmt::Predicate::ICMP_EQ:
+        case CmpStmt::Predicate::FCMP_OEQ:
+        case CmpStmt::Predicate::FCMP_UEQ:
+            target.meet_with(bound); break;
+        case CmpStmt::Predicate::ICMP_NE:
+        case CmpStmt::Predicate::FCMP_ONE:
+        case CmpStmt::Predicate::FCMP_UNE:
+            break;
+        case CmpStmt::Predicate::ICMP_UGT:
+        case CmpStmt::Predicate::ICMP_SGT:
+        case CmpStmt::Predicate::FCMP_OGT:
+        case CmpStmt::Predicate::FCMP_UGT:
+            target.meet_with(IntervalValue(bound.lb() + 1, IntervalValue::plus_infinity())); break;
+        case CmpStmt::Predicate::ICMP_UGE:
+        case CmpStmt::Predicate::ICMP_SGE:
+        case CmpStmt::Predicate::FCMP_OGE:
+        case CmpStmt::Predicate::FCMP_UGE:
+            target.meet_with(IntervalValue(bound.lb(), IntervalValue::plus_infinity())); break;
+        case CmpStmt::Predicate::ICMP_ULT:
+        case CmpStmt::Predicate::ICMP_SLT:
+        case CmpStmt::Predicate::FCMP_OLT:
+        case CmpStmt::Predicate::FCMP_ULT:
+            target.meet_with(IntervalValue(IntervalValue::minus_infinity(), bound.ub() - 1)); break;
+        case CmpStmt::Predicate::ICMP_ULE:
+        case CmpStmt::Predicate::ICMP_SLE:
+        case CmpStmt::Predicate::FCMP_OLE:
+        case CmpStmt::Predicate::FCMP_ULE:
+            target.meet_with(IntervalValue(IntervalValue::minus_infinity(), bound.ub())); break;
+        default: break;
+        }
+    };
+
+    apply_predicate(lhs, rhs);
+
+    for (const auto& addr : addrs) {
+        NodeID objId = as.getIDFromAddr(addr);
+        if (new_es.inAddrToValTable(objId))
+            apply_predicate(new_es.load(addr).getInterval(), rhs);
+    }
+
+    as = new_es;
+    return true;
+}
+
+static bool svf_is_switch_branch_feasible(const SVFVar* var, s64_t succ, AbstractState& as)
+{
+    AbstractState new_es = as;
+    IntervalValue& switch_cond = new_es[var->getId()].getInterval();
+    FIFOWorkList<const SVFStmt*> workList;
+    for (SVFStmt* stmt : var->getInEdges())
+        workList.push(stmt);
+    switch_cond.meet_with(IntervalValue(succ, succ));
+    if (switch_cond.isBottom())
+        return false;
+    while (!workList.empty()) {
+        const SVFStmt* stmt = workList.pop();
+        if (SVFUtil::isa<CopyStmt>(stmt)) {
+            new_es[var->getId()].getInterval().meet_with(IntervalValue(succ, succ));
+        } else if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt)) {
+            if (new_es.inVarToAddrsTable(load->getRHSVarID())) {
+                AddressValue& addrs = new_es[load->getRHSVarID()].getAddrs();
+                for (const auto& addr : addrs) {
+                    NodeID objId = as.getIDFromAddr(addr);
+                    if (new_es.inAddrToValTable(objId))
+                        new_es.load(addr).meet_with(switch_cond);
+                }
+            }
+        }
+    }
+    as = new_es;
+    return true;
+}
+
+extern "C" CAMLprim value caml_abstract_state_is_cmp_branch_feasible(
+        value v_svfir, value v_cmp_stmt, value v_succ, value v_as) {
+    CAMLparam4(v_svfir, v_cmp_stmt, v_succ, v_as);
+    SVFIR* svfir = unwrap_svfir(v_svfir);
+    CmpStmt* cmp = SVFUtil::dyn_cast<CmpStmt>(unwrap_svf_stmt(v_cmp_stmt));
+    if (!cmp) caml_failwith("is_cmp_branch_feasible: not a CmpStmt");
+    s64_t succ = (s64_t)Int_val(v_succ);
+    AbstractState* as = unwrap_abstract_state(v_as);
+    bool result = svf_is_cmp_branch_feasible(svfir, cmp, succ, *as);
+    CAMLreturn(Val_bool(result));
+}
+
+extern "C" CAMLprim value caml_abstract_state_is_switch_branch_feasible(
+        value v_svfir, value v_var, value v_succ, value v_as) {
+    CAMLparam4(v_svfir, v_var, v_succ, v_as);
+    (void)v_svfir;
+    SVFVar* var = unwrap_svf_var(v_var);
+    s64_t succ = (s64_t)Int_val(v_succ);
+    AbstractState* as = unwrap_abstract_state(v_as);
+    bool result = svf_is_switch_branch_feasible(var, succ, *as);
+    CAMLreturn(Val_bool(result));
 }
