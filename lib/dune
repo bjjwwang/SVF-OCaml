@@ -1,0 +1,68 @@
+; lib/dune — build file for the svf_ocaml library
+;
+; Environment variables required at build time:
+;   SVF_DIR   — path to the platform SVF dir (e.g. .../svf-lib/SVF-osx or .../SVF-linux-x86_64)
+;               Must contain include/ and lib/ subdirectories.
+;   LLVM_DIR  — path to LLVM installation (e.g. $(brew --prefix llvm@18) or .../llvm-18.1.0.obj)
+;   Z3_DIR    — path to Z3 installation (e.g. $(brew --prefix z3) or .../z3.obj)
+;
+; These are set automatically by build.sh.  Manual override:
+;   SVF_DIR=... LLVM_DIR=... Z3_DIR=... dune build
+
+(library
+ (name svf_ocaml)
+ (public_name svf-ocaml)
+ (modules
+  types
+  svf
+  svfir
+  graphs
+  wpa
+  mta
+  ae
+  memory_model
+  saber
+  dda
+  cfl
+  mssa
+  util)
+
+ ; C++ FFI stubs
+ ; svf_types_stubs.cpp defines all custom_operations structs (one definition)
+ ; All other stub files use svf_ocaml_types.h declarations
+ (foreign_stubs
+  (language cxx)
+  (names
+   svf_types_stubs   ; MUST be first to ensure definitions before references
+   svf_stubs
+   svfir_stubs
+   graphs_stubs
+   wpa_stubs
+   mta_stubs
+   ae_stubs
+   memory_model_stubs)
+  (flags
+   (:standard
+    -std=c++17
+    ; SVF headers (all in one include/ dir in the svf-lib npm package)
+    -I%{env:SVF_DIR=UNSET}/include
+    ; LLVM headers
+    -I%{env:LLVM_DIR=UNSET}/include
+    ; Z3 headers
+    -I%{env:Z3_DIR=UNSET}/include
+    ; Suppress common warnings from third-party headers
+    -Wno-unused-parameter
+    -Wno-deprecated-declarations)))
+
+ ; Link against SVF, LLVM, Z3, and C++ standard library
+ ; CXX_LINK_FLAGS should be set to -lc++ (macOS/LLVM) or -lstdc++ (Linux/GCC)
+ ; build.sh sets this automatically based on platform.
+ (c_library_flags
+  (-L%{env:SVF_DIR=UNSET}/lib
+   -lSvfCore
+   -lSvfLLVM
+   -L%{env:LLVM_DIR=UNSET}/lib
+   -lLLVM
+   -L%{env:Z3_DIR=UNSET}/lib
+   -lz3
+   %{env:CXX_LINK_FLAGS=-lc++})))

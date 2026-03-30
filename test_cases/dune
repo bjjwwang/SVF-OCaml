@@ -1,0 +1,9 @@
+; test executables — each corresponds to one Python test case
+
+(executable
+ (name test)
+ (libraries svf-ocaml))
+
+(executable
+ (name test2)
+ (libraries svf-ocaml))
