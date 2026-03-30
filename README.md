@@ -39,11 +39,12 @@ cd SVF-OCaml
 
 # 3. Run tests
 cd test_cases
-SVF_DIR=... LLVM_DIR=... Z3_DIR=... dune exec ./test.exe
-SVF_DIR=... LLVM_DIR=... Z3_DIR=... dune exec ./test2.exe
+SVF_DIR=... LLVM_DIR=... Z3_DIR=... CXX_LINK_FLAGS=... dune exec ./test.exe
+SVF_DIR=... LLVM_DIR=... Z3_DIR=... CXX_LINK_FLAGS=... dune exec ./test2.exe
 
 # 4. Run the demo with a bitcode file
-SVF_DIR=... LLVM_DIR=... Z3_DIR=... \
+cd ..
+SVF_DIR=... LLVM_DIR=... Z3_DIR=... CXX_LINK_FLAGS=... \
   dune exec ./demo/demo.exe -- path/to/program.bc
 ```
 
@@ -53,15 +54,24 @@ SVF_DIR=... LLVM_DIR=... Z3_DIR=... \
 # Install OCaml dependencies
 opam install dune alcotest
 
-# Install SVF libraries
+# Install SVF libraries (platform-specific paths)
 npm install -g svf-lib
 export SVF_LIB_DIR=$(npm root -g)/svf-lib
-export SVF_DIR=$SVF_LIB_DIR
-export LLVM_DIR=$SVF_LIB_DIR/llvm-18.1.0.obj
-export Z3_DIR=$SVF_LIB_DIR/z3.obj
+
+# macOS
+export SVF_DIR=$SVF_LIB_DIR/SVF-osx
+export LLVM_DIR=$(brew --prefix llvm@18)
+export Z3_DIR=$(brew --prefix z3)
+export CXX_LINK_FLAGS=-lc++
+
+# Linux (x86_64)
+# export SVF_DIR=$SVF_LIB_DIR/SVF-linux-x86_64
+# export LLVM_DIR=$SVF_LIB_DIR/llvm-18.1.0.obj
+# export Z3_DIR=$SVF_LIB_DIR/z3.obj
+# export CXX_LINK_FLAGS=-lstdc++
 
 # Build the library
-SVF_DIR=$SVF_DIR LLVM_DIR=$LLVM_DIR Z3_DIR=$Z3_DIR dune build
+SVF_DIR=$SVF_DIR LLVM_DIR=$LLVM_DIR Z3_DIR=$Z3_DIR CXX_LINK_FLAGS=$CXX_LINK_FLAGS dune build
 ```
 
 ### Setting up the runtime library path
@@ -70,12 +80,12 @@ Before running the built executables, ensure the SVF/LLVM/Z3 shared libraries ar
 
 **Linux:**
 ```bash
-export LD_LIBRARY_PATH=$SVF_DIR/Release-build/lib:$LLVM_DIR/lib:$Z3_DIR/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$SVF_DIR/lib:$LLVM_DIR/lib:$Z3_DIR/lib:$LD_LIBRARY_PATH
 ```
 
 **macOS:**
 ```bash
-export DYLD_LIBRARY_PATH=$SVF_DIR/Release-build/lib:$LLVM_DIR/lib:$Z3_DIR/lib:$DYLD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=$SVF_DIR/lib:$LLVM_DIR/lib:$Z3_DIR/lib:$DYLD_LIBRARY_PATH
 ```
 
 ## API Usage
