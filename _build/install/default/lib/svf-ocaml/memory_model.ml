@@ -1,1 +1,0 @@
-../../../../default/lib/memory_model.ml
