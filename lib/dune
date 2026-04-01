@@ -57,10 +57,12 @@
  ; Link against SVF, LLVM, Z3, and C++ standard library
  ; CXX_LINK_FLAGS should be set to -lc++ (macOS/LLVM) or -lstdc++ (Linux/GCC)
  ; build.sh sets this automatically based on platform.
+ ; SvfLLVM MUST come before SvfCore so that its strong definition of
+ ; valueOnlyToString overrides the weak placeholder in SvfCore on Linux.
  (c_library_flags
   (-L%{env:SVF_DIR=UNSET}/lib
-   -lSvfCore
    -lSvfLLVM
+   -lSvfCore
    -L%{env:LLVM_DIR=UNSET}/lib
    -lLLVM
    -L%{env:Z3_DIR=UNSET}/lib
