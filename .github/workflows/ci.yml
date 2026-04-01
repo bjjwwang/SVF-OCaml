@@ -66,15 +66,18 @@ jobs:
         run: |
           npm install -g svf-lib
           SVF_LIB_DIR=$(npm root -g)/svf-lib
+          NPM_ROOT=$(npm root -g)
           arch=$(uname -m)
-          LLVM_BUNDLED="${SVF_LIB_DIR}/llvm-18.1.0.obj"
+          # svf-lib postinstall downloads LLVM/Z3 to $(npm root -g)/, not inside svf-lib/
+          LLVM_BUNDLED="${NPM_ROOT}/llvm-18.1.0.obj"
+          Z3_BUNDLED="${NPM_ROOT}/z3.obj"
           # The bundled LLVM omits headers; symlink them from system llvm-18-dev
           mkdir -p "${LLVM_BUNDLED}/include"
           ln -sfn /usr/lib/llvm-18/include/llvm   "${LLVM_BUNDLED}/include/llvm"
           ln -sfn /usr/lib/llvm-18/include/llvm-c "${LLVM_BUNDLED}/include/llvm-c"
           echo "SVF_DIR=${SVF_LIB_DIR}/SVF-linux-${arch}" >> $GITHUB_ENV
           echo "LLVM_DIR=${LLVM_BUNDLED}"                  >> $GITHUB_ENV
-          echo "Z3_DIR=${SVF_LIB_DIR}/z3.obj"              >> $GITHUB_ENV
+          echo "Z3_DIR=${Z3_BUNDLED}"                      >> $GITHUB_ENV
           echo "CXX_LINK_FLAGS=-lstdc++"                   >> $GITHUB_ENV
 
       - name: Install SVF libraries (macOS)
