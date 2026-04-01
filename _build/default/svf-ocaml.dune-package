@@ -1,0 +1,157 @@
+(lang dune 3.22)
+(name svf-ocaml)
+(sections
+ (lib .)
+ (libexec .)
+ (doc ../../doc/svf-ocaml)
+ (stublibs ../stublibs))
+(files
+ (lib
+  (META
+   ae.ml
+   cfl.ml
+   dda.ml
+   dune-package
+   graphs.ml
+   libsvf_ocaml_stubs.a
+   memory_model.ml
+   mssa.ml
+   mta.ml
+   opam
+   saber.ml
+   svf.ml
+   svf_ocaml.a
+   svf_ocaml.cma
+   svf_ocaml.cmi
+   svf_ocaml.cmt
+   svf_ocaml.cmx
+   svf_ocaml.cmxa
+   svf_ocaml.ml
+   svf_ocaml__Ae.cmi
+   svf_ocaml__Ae.cmt
+   svf_ocaml__Ae.cmx
+   svf_ocaml__Cfl.cmi
+   svf_ocaml__Cfl.cmt
+   svf_ocaml__Cfl.cmx
+   svf_ocaml__Dda.cmi
+   svf_ocaml__Dda.cmt
+   svf_ocaml__Dda.cmx
+   svf_ocaml__Graphs.cmi
+   svf_ocaml__Graphs.cmt
+   svf_ocaml__Graphs.cmx
+   svf_ocaml__Memory_model.cmi
+   svf_ocaml__Memory_model.cmt
+   svf_ocaml__Memory_model.cmx
+   svf_ocaml__Mssa.cmi
+   svf_ocaml__Mssa.cmt
+   svf_ocaml__Mssa.cmx
+   svf_ocaml__Mta.cmi
+   svf_ocaml__Mta.cmt
+   svf_ocaml__Mta.cmx
+   svf_ocaml__Saber.cmi
+   svf_ocaml__Saber.cmt
+   svf_ocaml__Saber.cmx
+   svf_ocaml__Svf.cmi
+   svf_ocaml__Svf.cmt
+   svf_ocaml__Svf.cmx
+   svf_ocaml__Svfir.cmi
+   svf_ocaml__Svfir.cmt
+   svf_ocaml__Svfir.cmx
+   svf_ocaml__Types.cmi
+   svf_ocaml__Types.cmt
+   svf_ocaml__Types.cmx
+   svf_ocaml__Util.cmi
+   svf_ocaml__Util.cmt
+   svf_ocaml__Util.cmx
+   svf_ocaml__Wpa.cmi
+   svf_ocaml__Wpa.cmt
+   svf_ocaml__Wpa.cmx
+   svfir.ml
+   types.ml
+   util.ml
+   wpa.ml))
+ (libexec (svf_ocaml.cmxs))
+ (doc (README.md))
+ (stublibs (dllsvf_ocaml_stubs.so)))
+(library
+ (name svf-ocaml)
+ (kind normal)
+ (archives (byte svf_ocaml.cma) (native svf_ocaml.cmxa))
+ (plugins (byte svf_ocaml.cma) (native svf_ocaml.cmxs))
+ (foreign_objects
+  ae_stubs.o
+  graphs_stubs.o
+  memory_model_stubs.o
+  mta_stubs.o
+  svf_stubs.o
+  svf_types_stubs.o
+  svfir_stubs.o
+  wpa_stubs.o)
+ (foreign_archives (archives (for all) (files libsvf_ocaml_stubs.a)))
+ (foreign_dll_files ../stublibs/dllsvf_ocaml_stubs.so)
+ (native_archives svf_ocaml.a)
+ (main_module_name Svf_ocaml)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name svf_ocaml)
+     (visibility public)
+     (kind alias)
+     (source (path Svf_ocaml) (impl (path svf_ocaml.ml-gen))))
+    (name Svf_ocaml)
+    (modules
+     (module
+      (obj_name svf_ocaml__Ae)
+      (visibility public)
+      (source (path Ae) (impl (path ae.ml))))
+     (module
+      (obj_name svf_ocaml__Cfl)
+      (visibility public)
+      (source (path Cfl) (impl (path cfl.ml))))
+     (module
+      (obj_name svf_ocaml__Dda)
+      (visibility public)
+      (source (path Dda) (impl (path dda.ml))))
+     (module
+      (obj_name svf_ocaml__Graphs)
+      (visibility public)
+      (source (path Graphs) (impl (path graphs.ml))))
+     (module
+      (obj_name svf_ocaml__Memory_model)
+      (visibility public)
+      (source (path Memory_model) (impl (path memory_model.ml))))
+     (module
+      (obj_name svf_ocaml__Mssa)
+      (visibility public)
+      (source (path Mssa) (impl (path mssa.ml))))
+     (module
+      (obj_name svf_ocaml__Mta)
+      (visibility public)
+      (source (path Mta) (impl (path mta.ml))))
+     (module
+      (obj_name svf_ocaml__Saber)
+      (visibility public)
+      (source (path Saber) (impl (path saber.ml))))
+     (module
+      (obj_name svf_ocaml__Svf)
+      (visibility public)
+      (source (path Svf) (impl (path svf.ml))))
+     (module
+      (obj_name svf_ocaml__Svfir)
+      (visibility public)
+      (source (path Svfir) (impl (path svfir.ml))))
+     (module
+      (obj_name svf_ocaml__Types)
+      (visibility public)
+      (source (path Types) (impl (path types.ml))))
+     (module
+      (obj_name svf_ocaml__Util)
+      (visibility public)
+      (source (path Util) (impl (path util.ml))))
+     (module
+      (obj_name svf_ocaml__Wpa)
+      (visibility public)
+      (source (path Wpa) (impl (path wpa.ml))))))
+   (wrapped true))))

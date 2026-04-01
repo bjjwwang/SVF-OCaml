@@ -1,0 +1,6 @@
+description = ""
+requires = ""
+archive(byte) = "svf_ocaml.cma"
+archive(native) = "svf_ocaml.cmxa"
+plugin(byte) = "svf_ocaml.cma"
+plugin(native) = "svf_ocaml.cmxs"
